@@ -84,25 +84,18 @@ def join_branch_names(bs, sep):
     return sep.join("'%s'" % x for x in bs)
 
 
-def safe_input(msg):
-    if sys.version_info[0] == 2:  # Python 2
-        return raw_input(msg)  # noqa: F821
-    else:  # Python 3
-        return input(msg)
-
-
 def ask_if(msg, opt_yes_msg):
     if opt_yes:
         print(opt_yes_msg)
         return 'y'
-    return safe_input(msg).lower()
+    return input(msg).lower()
 
 
 def pick(choices, name):
     xs = "".join("[%i] %s\n" % (idx + 1, x) for idx, x in enumerate(choices))
     msg = xs + "Specify " + name + " or hit <return> to skip: "
     try:
-        idx = int(safe_input(msg)) - 1
+        idx = int(input(msg)) - 1
     except ValueError:
         sys.exit(1)
     if idx not in range(len(choices)):
@@ -1561,7 +1554,7 @@ def pick_remote(b):
     msg = "Select number 1..%i to specify the destination remote " \
           "repository, or 'n' to skip this branch, or " \
           "'q' to quit the traverse: " % len(rems)
-    ans = safe_input(msg).lower()
+    ans = input(msg).lower()
     if ans in ('q', 'quit'):
         raise StopTraversal
     try:
@@ -1931,20 +1924,14 @@ def status(warn_on_yellow_edges):
     hook_path = get_hook_path("machete-status-branch")
     hook_executable = check_hook_executable(hook_path)
 
-    def write_unicode(x):
-        if sys.version_info[0] == 2:  # Python 2
-            out.write(unicode(x))  # noqa: F821
-        else:  # Python 3
-            out.write(x)
-
     def print_line_prefix(b_, suffix):
-        write_unicode("  ")
+        out.write("  ")
         for p in pfx[:-1]:
             if not p:
-                write_unicode("  ")
+                out.write("  ")
             else:
-                write_unicode(colored(vertical_bar() + " ", edge_color[p]))
-        write_unicode(colored(suffix, edge_color[b_]))
+                out.write(colored(vertical_bar() + " ", edge_color[p]))
+        out.write(colored(suffix, edge_color[b_]))
 
     for b, pfx in dfs_res:
         if b in up_branch:
@@ -1966,14 +1953,14 @@ def status(warn_on_yellow_edges):
                     else:
                         fp_suffix = ''
                     print_line_prefix(b, vertical_bar())
-                    write_unicode(" %s%s%s\n" % (dim(short_sha) + "  " if opt_list_commits_with_hashes else "", dim(msg), fp_suffix))
+                    out.write(" %s%s%s\n" % (dim(short_sha) + "  " if opt_list_commits_with_hashes else "", dim(msg), fp_suffix))
             elbow_ascii_only = {DIM: "m-", RED: "x-", GREEN: "o-", YELLOW: "?-"}
             elbow = u"└─" if not ascii_only else elbow_ascii_only[edge_color[b]]
             print_line_prefix(b, elbow)
         else:
             if b != dfs_res[0][0]:
-                write_unicode("\n")
-            write_unicode("  ")
+                out.write("\n")
+            out.write("  ")
 
         if b in (ccob, crb):  # i.e. if b is the current branch (checked out or being rebased)
             if b == crb:
@@ -2016,7 +2003,7 @@ def status(warn_on_yellow_edges):
             else:
                 debug("status()", "machete-status-branch hook (%s) for branch %s returned %i; stdout: '%s'; stderr: '%s'" % (hook_path, b, status_code, stdout, stderr))
 
-        write_unicode(current + anno + sync_status + hook_output + "\n")
+        out.write(current + anno + sync_status + hook_output + "\n")
 
     sys.stdout.write(out.getvalue())
     out.close()
@@ -2197,6 +2184,8 @@ def usage(c=None):
             Note: this is simply done by removing the corresponding 'machete.overrideForkPoint.<branch>.*' config entries.
         """,
         "format": """
+            Note: there is no 'git machete format' command as such; 'format' is just a topic of 'git machete help'.
+
             The format of the definition file should be as follows:
 
             develop
@@ -2229,23 +2218,15 @@ def usage(c=None):
             Roughly equivalent to 'git checkout $(git machete show <direction>)'.
             See 'git machete help show' on more details on meaning of each direction.
         """,
-        "infer": """
-            Usage: git machete infer [-l|--list-commits]
-
-            A deprecated alias for 'discover'. Retained for compatibility, to be removed in the next major release.
-
-            Options:
-              -l, --list-commits            When printing the discovered tree, additionally lists the messages of commits introduced on each branch (as for 'git machete status').
-        """,
         "help": """
             Usage: git machete help [<command>]
 
             Prints a summary of this tool, or a detailed info on a command if defined.
         """,
         "hooks": """
-            As for standard git hooks, git-machete looks for its own specific hooks in $GIT_DIR/hooks/* (or $(git config core.hooksPath)/*, if set).
+            Note: there is no 'git machete hooks' command as such; 'hooks' is just a topic of 'git machete help'.
 
-            Note: 'hooks' is not a command as such, just a help topic (there is no 'git machete hooks' command).
+            As for standard git hooks, git-machete looks for its own specific hooks in $GIT_DIR/hooks/* (or $(git config core.hooksPath)/*, if set).
 
             * machete-pre-rebase <new-base> <fork-point-hash> <branch-being-rebased>
                 The hook that is executed before rebase is run during 'reapply', 'slide-out', 'traverse' and 'update'.
@@ -2289,11 +2270,6 @@ def usage(c=None):
             See 'git machete help fork-point' for more details on meaning of the "fork point".
 
             Note: the branch in question does not need to occur in the definition file.
-        """,
-        "prune-branches": """
-            Usage: git machete prune-branches
-
-            A deprecated alias for 'delete-unmanaged'. Retained for compatibility, to be removed in the next major release.
         """,
         "reapply": """
             Usage: git machete reapply [-f|--fork-point=<fork-point-commit>]
@@ -2502,8 +2478,8 @@ def usage(c=None):
     inv_aliases = {v: k for k, v in aliases.items()}
     groups = [
         ("General topics", ["file", "format", "help", "hooks", "version"]),
-        ("Build, display and modify the tree of branch dependencies", ["add", "anno", "discover", "edit", "status"]),  # 'infer' is deprecated and therefore skipped
-        ("List, check out and delete branches", ["delete-unmanaged", "go", "list", "show"]),  # 'prune-branches' is deprecated and therefore skipped
+        ("Build, display and modify the tree of branch dependencies", ["add", "anno", "discover", "edit", "status"]),
+        ("List, check out and delete branches", ["delete-unmanaged", "go", "list", "show"]),
         ("Determine changes specific to the given branch", ["diff", "fork-point", "log"]),
         ("Update git history in accordance with the tree of branch dependencies", ["reapply", "slide-out", "traverse", "update"])
     ]
@@ -2515,7 +2491,7 @@ def usage(c=None):
         short_usage()
         if c and c not in long_docs:
             print("\nUnknown command: '%s'" % c)
-        print("\n%s\n\n    Get familiar with the help for %s, %s, %s and %s, in this order.\n" % (
+        print("\n%s\n\n    Get familiar with 'git machete help' for %s, %s, %s and %s, in this order.\n" % (
             underline("TL;DR tip"), bold("format"), bold("edit"), bold("status"), bold("update"))
         )
         for hdr, cmds in groups:
@@ -2542,11 +2518,11 @@ def version():
     print('git-machete version ' + __version__)
 
 
-def main():
-    launch(sys.argv[1:])
-
-
 def launch(orig_args):
+    if sys.version_info[0] == 2:
+        sys.stderr.write("Python 2.x is no longer supported. Please switch to Python 3.\n")
+        sys.exit(1)
+
     def parse_options(in_args, short_opts="", long_opts=[], gnu=True):
         global ascii_only
         global opt_checked_out_since, opt_color, opt_debug, opt_down_fork_point, opt_fetch, opt_fork_point, opt_inferred, opt_list_commits, opt_list_commits_with_hashes, opt_merge, opt_n, opt_no_edit_merge
@@ -2704,9 +2680,9 @@ def launch(orig_args):
         cmd = cmd_and_args[0]
         args = cmd_and_args[1:]
 
-        if cmd not in ("format", "help"):
+        if cmd != "help":
             definition_file = get_abs_git_subpath("machete")
-            if cmd not in ("discover", "infer") and not os.path.isfile(definition_file):
+            if cmd != "discover" and not os.path.isfile(definition_file):
                 open(definition_file, 'w').close()
 
         directions = "d[own]|f[irst]|l[ast]|n[ext]|p[rev]|r[oot]|u[p]"
@@ -2786,9 +2762,6 @@ def launch(orig_args):
                 unset_fork_point_override(b)
             else:
                 print(fork_point(b, use_overrides=True))
-        elif cmd == "format":
-            # No need to read definition file.
-            usage("format")
         elif cmd in ("g", "go"):
             param = check_required_param(parse_options(args), directions)
             read_definition_file()
@@ -2801,10 +2774,6 @@ def launch(orig_args):
             param = check_optional_param(parse_options(args))
             # No need to read definition file.
             usage(param)
-        elif cmd == "infer":  # TODO: deprecated in favor of 'discover'
-            expect_no_param(parse_options(args, "l", ["list-commits"]))
-            # No need to read definition file.
-            discover_tree()
         elif cmd == "list":
             list_allowed_values = "managed|slidable|slidable-after <branch>|unmanaged|with-overridden-fork-point"
             list_args = parse_options(args)
@@ -2845,10 +2814,6 @@ def launch(orig_args):
             param = check_optional_param(parse_options(args))
             read_definition_file()
             log(param or current_branch())
-        elif cmd == "prune-branches":  # TODO: deprecated in favor of 'delete-unmanaged'
-            expect_no_param(parse_options(args, "y", ["yes"]))
-            read_definition_file()
-            delete_unmanaged()
         elif cmd == "reapply":
             args1 = parse_options(args, "f:", ["fork-point="])
             expect_no_param(args1, ". Use '-f' or '--fork-point' to specify the fork point commit")
@@ -2905,6 +2870,10 @@ def launch(orig_args):
         sys.exit(1)
     except StopTraversal:
         pass
+
+
+def main():
+    launch(sys.argv[1:])
 
 
 if __name__ == "__main__":

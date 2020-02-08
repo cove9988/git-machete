@@ -1,5 +1,11 @@
 # Release notes
 
+## New in git-machete 3.0.0
+
+- removed: support for Python 2
+- removed: deprecated commands `infer` and `prune-branches`
+- removed: standalone `format` command (`help format` can be used instead)
+
 ## New in git-machete 2.13.6
 
 - fixed: remove reviewer setting when opening a PR to NixOS/nixpkgs
