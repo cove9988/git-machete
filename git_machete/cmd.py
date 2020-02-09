@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 from git_machete import __version__
 import getopt
@@ -120,13 +119,12 @@ def warn(msg):
 
 
 def run_cmd(cmd, *args, **kwargs):
-    return subprocess.call([cmd] + list(args), **kwargs)
+    return subprocess.run([cmd] + list(args), **kwargs).returncode
 
 
 def popen_cmd(cmd, *args, **kwargs):
-    process = subprocess.Popen([cmd] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
-    stdout, stderr = process.communicate()
-    return process.returncode, stdout.decode('utf-8'), stderr.decode('utf-8')
+    process = subprocess.run([cmd] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, **kwargs)
+    return process.returncode, process.stdout, process.stderr
 
 
 # Git core
